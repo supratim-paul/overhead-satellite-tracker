@@ -1,0 +1,8 @@
+{
+  "name": "overhead-root",
+  "private": true,
+  "scripts": {
+    "dev": "node run.js --dev",
+    "start": "node run.js"
+  }
+}
