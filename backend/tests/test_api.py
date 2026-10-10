@@ -2,6 +2,7 @@ import sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 from datetime import datetime, timezone
 from fastapi.testclient import TestClient
+import httpx
 import main
 
 ISS = """ISS (ZARYA)
@@ -43,7 +44,19 @@ def test_seed_fallback(tmp_path, monkeypatch):
     (seed / "gps-ops.json").write_text('[{"name":"S","line1":"1 1U","line2":"2 1","norad":1}]')
     monkeypatch.setattr(main, "DATA", tmp_path / "data"); (tmp_path / "data").mkdir()
     monkeypatch.setattr(main, "SEED", seed)
-    main.mem.clear(); main.fail_until["gps-ops"] = 9e12  # pretend CelesTrak is blocked
+    main.mem.clear()
+    monkeypatch.setattr(main, "fail_until", {g: 9e12 for g in main.GROUPS})  # pretend CelesTrak is blocked; tests never hit the network
     with TestClient(main.app) as c:
         assert c.get("/api/tle/gps-ops").json()[0]["name"] == "S"
         assert c.get("/api/tle/weather").status_code == 502
+
+
+def test_fetch_stores_history_and_shuts_down_cleanly(tmp_path, monkeypatch):
+    monkeypatch.setattr(main, "DATA", tmp_path); monkeypatch.setattr(main, "SEED", tmp_path / "none")
+    main.mem.clear(); monkeypatch.setattr(main, "fail_until", {})
+    with TestClient(main.app) as c:
+        main.client = httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(200, text=ISS)))
+        assert c.get("/api/tle/weather").json()[0]["norad"] == 25544
+    # leaving the block must wait for the background SQLite write instead of closing the DB under it
+    import sqlite3
+    assert sqlite3.connect(tmp_path / "tle.db").execute("SELECT COUNT(*) FROM tle_history").fetchone()[0] == 1

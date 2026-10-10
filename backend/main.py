@@ -21,6 +21,7 @@ locks: dict[str, asyncio.Lock] = {g: asyncio.Lock() for g in GROUPS}
 client: httpx.AsyncClient | None = None
 db: sqlite3.Connection | None = None
 db_lock = asyncio.Lock()
+bg: set = set()  # background history writes, awaited before the DB is closed
 
 
 def open_db():
@@ -85,6 +86,7 @@ async def lifespan(_):
     db = open_db()
     client = httpx.AsyncClient(timeout=60, follow_redirects=True, headers={"User-Agent": "overhead-tracker/2.0"})
     yield
+    await asyncio.gather(*bg, return_exceptions=True)  # finish pending writes before closing the DB
     await client.aclose()
     db.close()
 
@@ -136,7 +138,9 @@ async def tle(group: str):
             raise HTTPException(502, err)
         mem[group] = (time.time(), data)
         await asyncio.to_thread(disk_write, group, data)
-        asyncio.create_task(store(data))
+        t = asyncio.create_task(store(data))
+        bg.add(t)
+        t.add_done_callback(bg.discard)
         return data
 
 
