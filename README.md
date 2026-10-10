@@ -2,7 +2,7 @@
 
 Real-time 3D tracker for up to 10,000+ satellites. Orbits are propagated in the browser with SGP4, drawn on a CesiumJS globe with day/night imagery, and any satellite can be opened as an animated 3D model.
 
-**Live demo:** https://YOUR-APP.onrender.com  ·  **Screenshot:** add `docs/screenshot.png` and embed it here
+**Live demo:** https://overhead-iz7f.onrender.com  ·  **Screenshot:** add `docs/screenshot.png` and embed it here
 
 ## Features
 - Live positions for Stations, Starlink, GPS, Weather, Science, Geostationary and All active groups
