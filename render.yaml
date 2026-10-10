@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: overhead
+    name: overhead-satellite
     runtime: python
     plan: free
     buildCommand: pip install -r backend/requirements.txt
